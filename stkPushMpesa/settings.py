@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from stkapp.utility import BASE_NGROK_URL
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,7 @@ SECRET_KEY = "django-insecure-fahx8-+w*dkqbf-y+wp4%vuxri-yitkjhp(ee6884whefe2ygh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['9821-154-78-56-22.ngrok-free.app','127.0.0.1']
 
 
 # Application definition
