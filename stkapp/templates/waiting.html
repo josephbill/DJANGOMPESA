@@ -23,6 +23,31 @@
    <h3>A pop-up has appeared on your phone. We are processing your payment.....</h3>
    <p id="status-message"></p>
 </div>
+<script>
+    const transactionId = "{{ transaction_id }}";
+
+      let checkStatusInterval = setInterval(function () {
+        console.log("Checking transaction status...");
+        fetch(`https://ee55-197-237-204-60.ngrok-free.app/check-status/${transactionId}/`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "Success") {
+              clearInterval(checkStatusInterval);
+              window.location.href = "/payment-success/";
+            } else if (data.status === "Failed") {
+              clearInterval(checkStatusInterval);
+              window.location.href = "/payment-failed/";
+            } else if (data.status === "Cancelled") {
+              clearInterval(checkStatusInterval);
+              window.location.href = "/payment-cancelled/";
+            }
+          })
+          .catch((error) => {
+            console.error("Error checking transaction status:", error);
+          });
+      }, 10000);
+
+</script>
 
 
 

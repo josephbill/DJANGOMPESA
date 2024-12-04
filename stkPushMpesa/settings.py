@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-fahx8-+w*dkqbf-y+wp4%vuxri-yitkjhp(ee6884whefe2ygh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['9821-154-78-56-22.ngrok-free.app','127.0.0.1']
+ALLOWED_HOSTS = ['ee55-197-237-204-60.ngrok-free.app','127.0.0.1']
 
 
 # Application definition
@@ -39,6 +39,12 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'stkapp.apps.StkappConfig',
+    'corsheaders',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    'https://ee55-197-237-204-60.ngrok-free.app',
+    'http://127.0.0.1:8000',
 ]
 
 MIDDLEWARE = [
@@ -49,6 +55,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "stkPushMpesa.urls"
@@ -83,7 +90,13 @@ DATABASES = {
     }
 }
 
-
+#email credentials
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "josephbill00@gmail.com"
+EMAIL_HOST_PASSWORD="fona pkve pxqk selv"
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 

@@ -30,37 +30,6 @@ def generate_access_token():
     auth_url = f'{BASE_URL}/oauth/v1/generate?grant_type=client_credentials'
     response = requests.get(auth_url, auth=(CONSUMER_KEY, CONSUMER_SECRET))
     return response.json().get('access_token')
-
-# helper method to check on a transaction
-@csrf_exempt
-def query_transaction(transaction_id):
-    access_token = generate_access_token()
-    status_url = f"{BASE_URL}/mpesa/transactionstatus/v1/query"
-
-    headers = {
-        'Authorization' : f'Bearer {access_token}',
-        'Content-Type' : 'application/json'
-    }
-
-    security_credential = MpesaPassword.generate_security_credential()
-    payload = {
-        "Initiator": "testapiuser",
-        "SecurityCredential": security_credential,
-        "CommandID": "TransactionStatusQuery",
-        "TransactionID": transaction_id,
-        "PartyA": SHORTCODE,
-        "IdentifierType": "1",
-        "ResultURL": "https://77b0-154-78-56-22.ngrok-free.app/callback/transaction_status/",
-        "QueueTimeOutURL": "https://77b0-154-78-56-22.ngrok-free.app/callback/transaction_timeout",
-        "Remarks": "Checking transaction status",
-        "Occasion": "STK Push",
-    }
-
-    response = requests.post(status_url, headers=headers, json=payload)
-    return response.json()
-
-
-
 def index(request):
     return render(request, 'index.html')
 
@@ -82,6 +51,7 @@ def stk_push(request):
         )
 
         access_token = generate_access_token()
+        print("access token " , access_token)
         stk_url = f'{BASE_URL}/mpesa/stkpush/v1/processrequest'
         headers = {
             'Authorization': f'Bearer {access_token}',
@@ -89,6 +59,9 @@ def stk_push(request):
         }
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         password = base64.b64encode(f'{SHORTCODE}{PASSKEY}{timestamp}'.encode()).decode()
+        print(stk_url)
+        print(password)
+        print(timestamp)
 
         payload = {
             "BusinessShortCode": SHORTCODE,
@@ -98,13 +71,17 @@ def stk_push(request):
             "Amount": amount,
             "PartyA": phone,
             "PartyB": SHORTCODE,
-            "PhoneNumber": "https://77b0-154-78-56-22.ngrok-free.app/callback",
+            "PhoneNumber" : phone,
+            "CallBackURL": "https://ee55-197-237-204-60.ngrok-free.app/callback",
             "AccountReference": f"Transaction_{transaction.id}",
             "TransactionDesc": "Payment for Services"
         }
 
         response = requests.post(stk_url, json=payload, headers=headers)
+        print("response" , response)
         response_data = response.json()
+
+        print(response_data)
 
         transaction_id = response_data.get('CheckoutRequestID', None)
         transaction.transaction_id = transaction_id
@@ -112,6 +89,7 @@ def stk_push(request):
         transaction.save()
 
         return redirect('waiting_page', transaction_id=transaction.id)
+
     return JsonResponse({'error': "invalid request"}, status=400)
 
 def waiting_page(request, transaction_id):
@@ -128,10 +106,10 @@ def callback(request):
             # response from  daraja api upon payment attempt
             data = json.loads(request.body)
             print("received callback data " , data)
-            stk_callback = data.get("Body",{}).get('stkCallback',{})
-            result_code = stk_callback.get("ResultCode",None)
-            result_desc = stk_callback.get("ResultDesc",'')
-            transaction_id = stk_callback.get("CheckoutRequestID",None)
+            stk_callback = data.get('Body',{}).get('stkCallback',{})
+            result_code = stk_callback.get('ResultCode',None)
+            result_desc = stk_callback.get('ResultDesc','')
+            transaction_id = stk_callback.get('CheckoutRequestID',None)
             print(transaction_id,result_code)
 
             if transaction_id:
@@ -149,8 +127,8 @@ def callback(request):
                             transaction_date = datetime.strptime(str(transaction_date_str), '%Y%m%d%H%M%S')
 
                         # updating transaction fields
-                        transaction.transaction_date = transaction_date
                         transaction.mpesa_receipt_number = receipt_number
+                        transaction.transaction_date = transaction_date
                         transaction.amount = amount
                         transaction.status = "Success"
                         transaction.description = "Payment Successful"
@@ -158,6 +136,25 @@ def callback(request):
                         print(f"Transaction {transaction_id} - {transaction.status} updated successfully")
 
                         ## TODO :  SEND EMAIL
+                        if transaction.email:
+                            subject = "Payment Receipt Confirmation"
+                            message = (
+                                f"Dear {transaction.name}, \n\n"
+                                f"Thank you for your payment of {transaction.amount}"
+                                f"Your MPESA confirmation receipt is {transaction.mpesa_receipt_number}"
+                                "Best Regards , \n"
+                                "STK PUSH"
+                            )
+                            html_message = (
+                                f"<p>Dear {transaction.name},</p>"
+                                f"<p>Thank you for your payment of {transaction.amount}</p>"
+                                f"<p>Your MPESA confirmation receipt is {transaction.mpesa_receipt_number}</p>"
+                                f"<p>Best Regards, STK Push</p>"
+                            )
+                            send_mail(subject,message,'josephbill00@gmail.com',[transaction.email]
+                                      ,fail_silently=False,html_message=html_message,)
+                            print("Payment receipt email sent successfully")
+
                     elif result_code == 1:
                         transaction.status = "Failed"
                         transaction.description = result_desc
@@ -169,14 +166,45 @@ def callback(request):
                         transaction.save()
                         print(f"Transaction {transaction_id} marked as cancelled.")
 
-            return JsonResponse({"message": "callback received and processed"})
+            return JsonResponse({"message": "callback received and processed"}, status=200)
+
         except Exception as e:
             print(f"Error processing callback {e}")
             return JsonResponse({"error": f"Error processing callback {e}"}, status=500)
+
     return JsonResponse({"error" : "Invalid request method"}, status=400)
 
+def check_status(request, transaction_id):
+    # get the transaction needed for the process
+    transaction = Transaction.objects.filter(id=transaction_id).first()
+    if not transaction:
+        return JsonResponse({"status": "failed" , "message": "Transaction not found"}, status=400)
+
+    '''
+    on stk prompt the transaction status is pending 
+    on successful payments the transaction status is success 
+    on failure the transaction status is failed 
+    on cancellation the transaction status is canceled
+    '''
+
+    if transaction.status == "Success":
+        return JsonResponse({"status": "Success", "message": "Payment Successful"}, status=200)
+    elif transaction.status == "Failed":
+        return JsonResponse({"status": "Failed", "message": "Payment Failed"}, status=200)
+    elif transaction.status == "Cancelled":
+        return JsonResponse({"status": "Cancelled", "message": "Transaction was Cancelled"}, status=200)
+    else:
+        return JsonResponse({"status": "Pending", "message": "Transaction still being processed."}, status=400)
 
 
+def payment_success(request):
+    return render(request,"payment_success.html")
+
+def payment_failed(request):
+    return render(request,"payment_failed.html")
+
+def payment_cancelled(request):
+    return render(request,"payment_cancelled.html")
 
 
 
