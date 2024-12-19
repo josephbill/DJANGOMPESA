@@ -1,1 +1,1 @@
-web: gunicorn stkPushMpesa.wsgi:application
+web: gunicorn stkpushmpesa.wsgi:application
