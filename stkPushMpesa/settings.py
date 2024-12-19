@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'stkapp.apps.StkappConfig',
     'corsheaders',
+    'stkapp'
 ]
 
 CORS_ALLOWED_ORIGINS = [
