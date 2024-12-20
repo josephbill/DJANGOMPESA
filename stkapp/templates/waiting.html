@@ -28,7 +28,7 @@
 
       let checkStatusInterval = setInterval(function () {
         console.log("Checking transaction status...");
-        fetch(`https://ee55-197-237-204-60.ngrok-free.app/check-status/${transactionId}/`)
+        fetch(`https://stkpushmpesa.onrender.com/check-status/${transactionId}/`)
           .then((response) => response.json())
           .then((data) => {
             if (data.status === "Success") {

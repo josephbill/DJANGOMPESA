@@ -32,7 +32,6 @@ def generate_access_token():
     return response.json().get('access_token')
 def index(request):
     return render(request, 'index.html')
-
 @csrf_exempt
 def stk_push(request):
     if request.method == 'POST':
@@ -72,7 +71,7 @@ def stk_push(request):
             "PartyA": phone,
             "PartyB": SHORTCODE,
             "PhoneNumber" : phone,
-            "CallBackURL": "https://ee55-197-237-204-60.ngrok-free.app/callback",
+            "CallBackURL": "https://stkpushmpesa.onrender.com/callback",
             "AccountReference": f"Transaction_{transaction.id}",
             "TransactionDesc": "Payment for Services"
         }
